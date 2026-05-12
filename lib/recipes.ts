@@ -1,9 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import matter from 'gray-matter';
 import type { RecipeFrontmatter } from '@/data/schema';
-
-const RECIPES_DIR = path.join(process.cwd(), 'data', 'recipes');
+import generated from '@/data/recipes.generated.json';
 
 export interface Recipe extends RecipeFrontmatter {
   /** Markdown body content (everything below frontmatter) */
@@ -11,27 +7,19 @@ export interface Recipe extends RecipeFrontmatter {
 }
 
 /**
- * Read all recipe MDX files from data/recipes/.
- * Build-time only — uses fs synchronously.
- * Returns recipes sorted by published_at desc, drafts excluded by default.
+ * Recipes are bundled into the build output by scripts/build-recipes-json.mjs
+ * (run via the `prebuild` npm hook). This lets the app run on edge runtimes
+ * like Cloudflare Workers where data/recipes/ is not available on disk.
+ */
+const ALL: Recipe[] = generated as unknown as Recipe[];
+
+/**
+ * Return all recipes, sorted by published_at desc, drafts excluded by default.
  */
 export function getAllRecipes(opts: { includeDrafts?: boolean } = {}): Recipe[] {
-  if (!fs.existsSync(RECIPES_DIR)) return [];
-
-  const files = fs
-    .readdirSync(RECIPES_DIR)
-    .filter((f) => f.endsWith('.mdx'));
-
-  const recipes = files.map((file) => {
-    const slug = file.replace(/\.mdx$/, '');
-    const fullPath = path.join(RECIPES_DIR, file);
-    const raw = fs.readFileSync(fullPath, 'utf8');
-    const { data, content } = matter(raw);
-    return { ...(data as RecipeFrontmatter), slug, body: content } as Recipe;
-  });
-
-  return recipes
+  return ALL
     .filter((r) => opts.includeDrafts || !r.draft)
+    .slice()
     .sort((a, b) => {
       if (!a.published_at) return 1;
       if (!b.published_at) return -1;
@@ -43,8 +31,7 @@ export function getAllRecipes(opts: { includeDrafts?: boolean } = {}): Recipe[] 
  * Find a single recipe by slug.
  */
 export function getRecipeBySlug(slug: string): Recipe | null {
-  const all = getAllRecipes({ includeDrafts: true });
-  return all.find((r) => r.slug === slug) ?? null;
+  return ALL.find((r) => r.slug === slug) ?? null;
 }
 
 /**

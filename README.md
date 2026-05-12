@@ -32,7 +32,7 @@ değerleri statik olarak hesaplanmış halde sunulur.
 
 | Katman      | Seçim                                                  |
 | ----------- | ------------------------------------------------------ |
-| Framework   | **Next.js 16.2.6** (App Router, RSC, Turbopack)        |
+| Framework   | **Next.js 15.5.16** (App Router, RSC, Turbopack)       |
 | Runtime     | **React 19**                                           |
 | Dil         | **TypeScript 5**                                       |
 | Stil        | **Tailwind CSS v4** (PostCSS plugin)                   |
@@ -169,11 +169,17 @@ Markdown gövde — anekdot, tarihçe, sunum notları…
 | Komut              | Açıklama                                              |
 | ------------------ | ----------------------------------------------------- |
 | `npm run dev`      | Geliştirme sunucusu — `http://localhost:3000`         |
-| `npm run build`    | Üretim build — `.next/`                               |
+| `npm run build`    | Üretim build — `.next/` (`prebuild` MDX → JSON bundle) |
 | `npm run start`    | Üretim sunucusu (Node.js)                             |
 | `npm run lint`     | ESLint                                                |
 | `npm run preview`  | OpenNext build + lokal Workers preview                |
 | `npm run deploy`   | Cloudflare Workers'a deploy                           |
+
+> **Not:** `prebuild` ve `predev` hook'ları `scripts/build-recipes-json.mjs`
+> ile `data/recipes/*.mdx` dosyalarını tek bir `data/recipes.generated.json`
+> bundle'ına dump eder. Bu, runtime'da `fs.readFileSync`'a ihtiyacı kaldırır;
+> dolayısıyla site Cloudflare Workers gibi edge runtime'larda da çalışır.
+> Üretilen JSON `.gitignore`'da olduğu için repoya işlenmez.
 
 ---
 

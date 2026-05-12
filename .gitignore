@@ -42,6 +42,9 @@ yarn-error.log*
 .dev.vars
 cloudflare-env.d.ts
 
+# generated at build time by scripts/build-recipes-json.mjs
+/data/recipes.generated.json
+
 # editor / harness
 .idea/
 .claude/
