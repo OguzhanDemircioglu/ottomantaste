@@ -1,26 +1,53 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ─── Impeccable-Ottoman palette: warm parchment + 10 category accents in OKLCH ─── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Base parchment + ink — lifted to a softer ivory cream per user direction */
+  --color-background: oklch(96% 0.018 72);   /* light cream parchment */
+  --color-foreground: oklch(24% 0.04 30);    /* walnut ink */
+  --color-paper: oklch(98% 0.012 72);        /* near-white card paper */
+  --color-paper-warm: oklch(92% 0.04 65);    /* footer / index strip */
+
+  /* Ottoman heritage accents */
+  --color-bordo: oklch(40% 0.13 22);
+  --color-bordo-deep: oklch(32% 0.12 22);
+  --color-gold: oklch(72% 0.13 80);
+  --color-gold-deep: oklch(58% 0.13 75);
+
+  /* Impeccable's "one decisive magenta" — used as system accent (magenta-whisper variant) */
+  --color-magenta: oklch(60% 0.25 350);
+  --color-magenta-deep: oklch(48% 0.22 350);
+  --color-magenta-veil: oklch(60% 0.25 350 / 0.18);
+
+  /* 10 category colors — distinct hue per dish kategorisi */
+  --cat-corba:   oklch(62% 0.16 145);  /* sage green — broth color */
+  --cat-et:      oklch(40% 0.14 22);   /* deep bordo — meat */
+  --cat-kebap:   oklch(55% 0.20 45);   /* burnt orange — char-grilled */
+  --cat-sarma:   oklch(50% 0.14 130);  /* leaf green — vine wraps */
+  --cat-pilav:   oklch(75% 0.13 80);   /* warm gold — saffron rice */
+  --cat-meze:    oklch(65% 0.16 200);  /* mediterranean teal */
+  --cat-borek:   oklch(70% 0.14 65);   /* honey amber — pastry */
+  --cat-tatli:   oklch(60% 0.18 350);  /* magenta rose — desserts */
+  --cat-serbet:  oklch(55% 0.18 280);  /* cini blue — Iznik tile cobalt */
+  --cat-helva:   oklch(50% 0.10 60);   /* warm taupe — sesame halva */
+
+  /* Season accents — for SeasonInterlude card */
+  --season-bahar: oklch(70% 0.16 130); /* spring green */
+  --season-yaz:   oklch(72% 0.18 65);  /* summer amber */
+  --season-guz:   oklch(55% 0.18 40);  /* autumn copper */
+  --season-kis:   oklch(60% 0.13 240); /* winter steel */
+
+  /* Layered ornament tints */
+  --ink-soft: oklch(35% 0.04 30);
+  --ink-veil: oklch(22% 0.04 30 / 0.15);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Subtle motion-aware respect */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }

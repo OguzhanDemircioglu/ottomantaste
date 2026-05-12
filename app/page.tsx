@@ -1,65 +1,211 @@
-import Image from "next/image";
+import Link from 'next/link';
+import { ArrowDown } from 'lucide-react';
+import { getAllRecipes, filterRecipes } from '@/lib/recipes';
+import { localized } from '@/lib/title';
+import { CATEGORIES, type Category } from '@/data/taxonomies';
+import { getLang, t, categoryLabel as catLabel } from '@/lib/i18n';
+import { getStoryHook } from '@/lib/story-hooks';
+import { SiteHeaderBar } from '@/components/site-header-bar';
+import { Masthead } from '@/components/masthead';
+import { SearchBar } from '@/components/search-bar';
+import { FilterTabs } from '@/components/filter-tabs';
+import { MagazineGrid } from '@/components/magazine-grid';
+import { AlphabetIndex } from '@/components/alphabet-index';
+import { TodayWidget } from '@/components/today-widget';
+import { FeedbackSection } from '@/components/feedback-section';
+import type { RecipeCardData } from '@/components/recipe-card';
 
-export default function Home() {
+type SearchParams = { category?: string; lang?: string; p?: string };
+
+const isCategory = (v: string | undefined): v is Category =>
+  !!v && (CATEGORIES as readonly string[]).includes(v);
+
+/** Recipes per page — keeps initial HTML payload bounded. */
+const PAGE_SIZE = 50;
+
+function clampPage(value: string | undefined, max: number): number {
+  const n = Number.parseInt(value ?? '1', 10);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(n, Math.max(1, max));
+}
+
+function buildHrefFor(currentLang: 'tr' | 'en') {
+  return (slug: string | undefined) => {
+    const params = new URLSearchParams();
+    if (slug) params.set('category', slug);
+    if (currentLang === 'en') params.set('lang', 'en');
+    const qs = params.toString();
+    return qs ? `/?${qs}` : '/';
+  };
+}
+
+function pickMainIngredients(r: ReturnType<typeof getAllRecipes>[number]): string[] {
+  const list = r.ingredients ?? [];
+  const filtered = list.filter((ing) => {
+    const g = (ing.group ?? '').toLowerCase();
+    return !g.includes('süsle') && !g.includes('garn');
+  });
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const ing of filtered) {
+    const cleaned = (ing.name ?? '').replace(/\s*\([^)]*\)\s*/g, '').trim();
+    const head = cleaned.split(/[,;·]/)[0]?.trim() ?? cleaned;
+    if (head && !seen.has(head.toLowerCase())) {
+      seen.add(head.toLowerCase());
+      out.push(head);
+    }
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
+function toCard(
+  r: ReturnType<typeof getAllRecipes>[number],
+  lang: 'tr' | 'en',
+): RecipeCardData {
+  const diff = r.difficulty as 'kolay' | 'orta' | 'zor' | undefined;
+  return {
+    slug: r.slug,
+    title: localized(r.title, r.slug, lang),
+    tagline: localized(r.tagline, '', lang),
+    category: r.category as string,
+    categoryLabel: catLabel(r.category as string, lang),
+    hero_image: r.hero_image || '/recipes/placeholder.jpg',
+    total_min: r.total_min,
+    serves: r.serves,
+    stepCount: r.steps?.length ?? 0,
+    difficulty: diff,
+    mainIngredients: pickMainIngredients(r),
+    storyHook: getStoryHook({
+      slug: r.slug,
+      period: r.period as string | undefined,
+      realm: r.realm as string | undefined,
+      lang,
+    }),
+  };
+}
+
+function groupAlphabetically(
+  recipes: Array<{ slug: string; title: string }>,
+): Array<{ letter: string; recipes: Array<{ slug: string; title: string }> }> {
+  const collator = new Intl.Collator('tr', { sensitivity: 'base' });
+  const sorted = [...recipes].sort((a, b) => collator.compare(a.title, b.title));
+  const groups = new Map<string, Array<{ slug: string; title: string }>>();
+  for (const r of sorted) {
+    const first = r.title[0]?.toLocaleUpperCase('tr') ?? '#';
+    const arr = groups.get(first) ?? [];
+    arr.push(r);
+    groups.set(first, arr);
+  }
+  return Array.from(groups.entries()).map(([letter, recipes]) => ({ letter, recipes }));
+}
+
+function currentSeason(): 'bahar' | 'yaz' | 'guz' | 'kis' {
+  const m = new Date().getMonth();
+  if (m <= 1 || m === 11) return 'kis';
+  if (m <= 4) return 'bahar';
+  if (m <= 7) return 'yaz';
+  return 'guz';
+}
+
+function pickToday(recipes: ReturnType<typeof getAllRecipes>): ReturnType<typeof getAllRecipes>[number] | null {
+  if (recipes.length === 0) return null;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const day = Math.floor((now.getTime() - start.getTime()) / 86_400_000);
+  const withImage = recipes.filter((r) => r.hero_image?.startsWith('/recipes/'));
+  const pool = withImage.length ? withImage : recipes;
+  return pool[day % pool.length] ?? null;
+}
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const sp = await searchParams;
+  const lang = getLang(sp.lang);
+  const all = getAllRecipes();
+
+  const activeCategory = isCategory(sp.category) ? sp.category : undefined;
+  const filtered = filterRecipes(all, activeCategory ? { category: activeCategory } : {});
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const page = clampPage(sp.p, totalPages);
+  const start = 0;
+  const end = page * PAGE_SIZE;     // cumulative — feels like "show more"
+  const visible = filtered.slice(start, end);
+  const hasMore = end < filtered.length;
+
+  const counts = new Map<string, number>();
+  for (const r of all) counts.set(r.category as string, (counts.get(r.category as string) ?? 0) + 1);
+  const tabs = CATEGORIES.map((slug) => ({
+    slug,
+    label: catLabel(slug, lang),
+    count: counts.get(slug) ?? 0,
+  }));
+
+  const cards = visible.map((r) => toCard(r, lang));
+  const indexGroups = groupAlphabetically(
+    all.map((r) => ({ slug: r.slug, title: localized(r.title, r.slug, lang) })),
+  );
+
+  const today = pickToday(all);
+  const todayCard = today
+    ? {
+        slug: today.slug,
+        title: localized(today.title, today.slug, lang),
+        category: today.category as string,
+        categoryLabel: catLabel(today.category as string, lang),
+        hero_image: today.hero_image,
+        total_min: today.total_min,
+      }
+    : null;
+
+  // "Show more" = bump the page param, preserve other params
+  const moreParams = new URLSearchParams();
+  if (activeCategory) moreParams.set('category', activeCategory);
+  if (lang === 'en') moreParams.set('lang', 'en');
+  moreParams.set('p', String(page + 1));
+  const moreHref = `/?${moreParams.toString()}#more`;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main>
+      <SiteHeaderBar lang={lang} />
+      <Masthead total={all.length} lang={lang} />
+      <SearchBar lang={lang} />
+      <FilterTabs
+        tabs={tabs}
+        active={activeCategory}
+        totalAll={all.length}
+        allLabel={t('all', lang)}
+        hrefFor={buildHrefFor(lang)}
+      />
+
+      <MagazineGrid recipes={cards} season={currentSeason()} lang={lang} />
+
+      {hasMore && (
+        <div id="more" className="mx-auto -mt-8 mb-16 flex justify-center px-6">
+          <Link
+            href={moreHref}
+            className="group inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#2a1810]/25 bg-[var(--color-paper)] px-7 py-3.5 text-sm font-semibold text-[#2a1810] transition-[transform,background-color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:bg-[#2a1810] hover:text-[var(--color-paper)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-magenta-deep)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)]"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+            {t('loadMore', lang)}
+            <ArrowDown
+              className="h-4 w-4 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-y-0.5"
+              aria-hidden
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <span className="font-mono text-[11px] text-[#2a1810]/55 group-hover:text-[var(--color-paper)]/65">
+              {visible.length}/{filtered.length}
+            </span>
+          </Link>
         </div>
-      </main>
-    </div>
+      )}
+
+      <FeedbackSection lang={lang} />
+      <AlphabetIndex groups={indexGroups} lang={lang} />
+
+      {todayCard && <TodayWidget recipe={todayCard} lang={lang} />}
+    </main>
   );
 }
