@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 /**
  * Pre-build step that emits public/search-index.json — a compact
- * client-side substring search index. Run after build-recipes-json.mjs
- * (which it reads from).
+ * client-side card directory. Runs after build-recipes-json.mjs.
  *
- * Why this is a static file rather than an API route:
- * - The index only changes when recipes change (deploy boundary).
- * - Serving it from public/ lets Cloudflare's edge cache it with
- *   `Cache-Control: immutable` indefinitely — no Worker invocation.
- * - It also avoids re-bundling the full 2.2 MB recipes JSON into the
- *   Worker just to ship a ~150 kB search payload.
+ * Beyond the original search-only use case (substring match for the
+ * search bar), the index now also feeds the /favoriler page, which used
+ * to round-trip every visit through /api/recipes-by-slugs. Carrying a
+ * handful of extra fields here is a fair trade for killing the Worker
+ * route and the 2.2 MB JSON re-import that came with it.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -36,22 +34,52 @@ function pick(obj, slug, lang) {
   return lang === 'en' ? slug.replace(/-/g, ' ') : slug.replace(/-/g, ' ');
 }
 
+function pickMainIngredients(ingredients) {
+  const list = Array.isArray(ingredients) ? ingredients : [];
+  const filtered = list.filter((ing) => {
+    const g = (ing.group ?? '').toLowerCase();
+    return !g.includes('süsle') && !g.includes('garn');
+  });
+  const out = [];
+  const seen = new Set();
+  for (const ing of filtered) {
+    const cleaned = (ing.name ?? '').replace(/\s*\([^)]*\)\s*/g, '').trim();
+    const head = cleaned.split(/[,;·]/)[0]?.trim() ?? cleaned;
+    if (head && !seen.has(head.toLowerCase())) {
+      seen.add(head.toLowerCase());
+      out.push(head);
+    }
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
 const index = recipes.map((r) => ({
   slug: r.slug,
   title_tr: pick(r.title, r.slug, 'tr'),
   title_en: pick(r.title, r.slug, 'en'),
-  tagline:
-    pick(r.tagline, '', 'tr') || pick(r.tagline, '', 'en') || '',
+  tagline_tr: pick(r.tagline, '', 'tr'),
+  tagline_en: pick(r.tagline, '', 'en'),
   category: r.category,
   ingredients: (r.ingredients ?? [])
     .map((i) => (i.name ?? '').replace(/\s*\([^)]*\)\s*/g, '').trim())
     .filter(Boolean)
     .join(' · '),
-  hero_image: r.hero_image,
+  hero_image: r.hero_image ?? '/recipes/placeholder.jpg',
+  // Card-essential fields (used by /favoriler and any other client-only
+  // card renderer to avoid round-trips back to the Worker):
+  total_min: r.total_min ?? null,
+  serves: r.serves ?? null,
+  step_count: Array.isArray(r.steps) ? r.steps.length : 0,
+  difficulty: r.difficulty ?? null,
+  main_ingredients: pickMainIngredients(r.ingredients),
+  period: r.period ?? null,
+  realm: r.realm ?? null,
 }));
 
 fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });
 fs.writeFileSync(OUT_FILE, JSON.stringify(index));
+const sizeKb = (fs.statSync(OUT_FILE).size / 1024).toFixed(1);
 console.log(
-  `[search-index] wrote ${index.length} entries → ${path.relative(ROOT, OUT_FILE)} (${(fs.statSync(OUT_FILE).size / 1024).toFixed(1)} KB)`,
+  `[search-index] wrote ${index.length} entries → ${path.relative(ROOT, OUT_FILE)} (${sizeKb} KB)`,
 );

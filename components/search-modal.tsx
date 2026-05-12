@@ -22,7 +22,8 @@ type Entry = {
   slug: string;
   title_tr: string;
   title_en: string;
-  tagline: string;
+  tagline_tr: string;
+  tagline_en: string;
   category: string;
   ingredients: string;
   hero_image: string;
@@ -63,7 +64,7 @@ function normalize(s: string) {
 function score(entry: Entry, q: string): number {
   const titleTr = normalize(entry.title_tr);
   const titleEn = normalize(entry.title_en);
-  const tagline = normalize(entry.tagline);
+  const tagline = normalize(`${entry.tagline_tr} ${entry.tagline_en}`);
   const ings = normalize(entry.ingredients);
   if (titleTr.startsWith(q)) return 1000;
   if (titleEn.startsWith(q)) return 950;
@@ -207,9 +208,9 @@ export function SearchModal({ open, onClose, lang }: Props) {
                       >
                         {lang === 'en' ? r.title_en : r.title_tr}
                       </span>
-                      {r.tagline && (
+                      {(lang === 'en' ? r.tagline_en : r.tagline_tr) && (
                         <span className="block truncate text-xs text-[#2a1810]/60">
-                          {r.tagline}
+                          {lang === 'en' ? r.tagline_en : r.tagline_tr}
                         </span>
                       )}
                     </span>

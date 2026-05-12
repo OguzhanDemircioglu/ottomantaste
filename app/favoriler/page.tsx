@@ -4,17 +4,85 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Heart, ArrowLeft } from 'lucide-react';
 import { useFavorites } from '@/lib/use-favorites';
-import { getLang, t, type Lang } from '@/lib/i18n';
+import { getLang, t, categoryLabel as catLabel, type Lang } from '@/lib/i18n';
+import { getStoryHook } from '@/lib/story-hooks';
 import { SiteHeaderBar } from '@/components/site-header-bar';
 import { RecipeCard, type RecipeCardData } from '@/components/recipe-card';
 
 /**
- * Client-side favorites page. We can't use server components here because
- * the slug list lives in localStorage. Flow:
- *   1. Read favorites from localStorage (via the hook)
- *   2. POST those slugs to /api/recipes-by-slugs
- *   3. Render the returned RecipeCardData[] using the same RecipeCard
+ * Client-side favorites page.
+ *
+ * Flow:
+ *   1. Read favorite slugs from localStorage (useFavorites hook).
+ *   2. Fetch the (cached, immutable) /search-index.json once.
+ *   3. Filter to the favorite slugs, project into RecipeCardData,
+ *      compute storyHook locally — no Worker call needed.
+ *
+ * Why client-only: favorites live in localStorage, which the server
+ * doesn't see. Previously this page POSTed to /api/recipes-by-slugs
+ * just to translate slugs into card data; with the search index now
+ * carrying the same fields, the route is gone and Cloudflare's edge
+ * cache handles the data load entirely.
  */
+
+interface IndexEntry {
+  slug: string;
+  title_tr: string;
+  title_en: string;
+  tagline_tr: string;
+  tagline_en: string;
+  category: string;
+  hero_image: string;
+  total_min: number | null;
+  serves: number | null;
+  step_count: number;
+  difficulty: 'kolay' | 'orta' | 'zor' | null;
+  main_ingredients: string[];
+  period: string | null;
+  realm: string | null;
+}
+
+let _indexCache: IndexEntry[] | null = null;
+let _indexPromise: Promise<IndexEntry[]> | null = null;
+
+async function loadIndex(): Promise<IndexEntry[]> {
+  if (_indexCache) return _indexCache;
+  if (_indexPromise) return _indexPromise;
+  _indexPromise = fetch('/search-index.json')
+    .then((r) => (r.ok ? r.json() : []))
+    .then((data) => {
+      _indexCache = (data as IndexEntry[]) ?? [];
+      return _indexCache;
+    })
+    .catch(() => {
+      _indexCache = [];
+      return _indexCache;
+    });
+  return _indexPromise;
+}
+
+function entryToCard(entry: IndexEntry, lang: Lang): RecipeCardData {
+  return {
+    slug: entry.slug,
+    title: (lang === 'en' ? entry.title_en : entry.title_tr) || entry.slug,
+    tagline: (lang === 'en' ? entry.tagline_en : entry.tagline_tr) || '',
+    category: entry.category,
+    categoryLabel: catLabel(entry.category, lang),
+    hero_image: entry.hero_image || '/recipes/placeholder.jpg',
+    total_min: entry.total_min ?? 0,
+    serves: entry.serves ?? 0,
+    stepCount: entry.step_count,
+    difficulty: entry.difficulty ?? undefined,
+    mainIngredients: entry.main_ingredients,
+    storyHook: getStoryHook({
+      slug: entry.slug,
+      period: entry.period ?? undefined,
+      realm: entry.realm ?? undefined,
+      lang,
+    }),
+  };
+}
+
 export default function FavorilerPage() {
   // Read lang from URL on the client (no useSearchParams to keep this leaf simple)
   const [lang, setLang] = React.useState<Lang>('tr');
@@ -26,7 +94,7 @@ export default function FavorilerPage() {
   const { favorites, mounted, count } = useFavorites();
   const [cards, setCards] = React.useState<RecipeCardData[] | null>(null);
 
-  // When favorites set changes (on mount or after toggle), fetch their cards.
+  // When favorites set changes (on mount or after toggle), filter the index.
   React.useEffect(() => {
     if (!mounted) return;
     const slugs = [...favorites];
@@ -34,19 +102,19 @@ export default function FavorilerPage() {
       setCards([]);
       return;
     }
-    const ctrl = new AbortController();
-    fetch('/api/recipes-by-slugs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slugs, lang }),
-      signal: ctrl.signal,
-    })
-      .then((r) => (r.ok ? r.json() : { cards: [] }))
-      .then((data) => setCards((data?.cards as RecipeCardData[]) ?? []))
-      .catch(() => {
-        /* ignore aborts and network errors — the empty state is acceptable */
-      });
-    return () => ctrl.abort();
+    let cancelled = false;
+    loadIndex().then((idx) => {
+      if (cancelled) return;
+      const bySlug = new Map(idx.map((e) => [e.slug, e]));
+      const built = slugs
+        .map((s) => bySlug.get(s))
+        .filter((e): e is IndexEntry => Boolean(e))
+        .map((e) => entryToCard(e, lang));
+      setCards(built);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [mounted, favorites, lang]);
 
   return (
