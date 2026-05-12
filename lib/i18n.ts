@@ -45,8 +45,14 @@ const STRINGS = {
   emptyEyebrow:  { tr: 'Sahife boş', en: 'Empty page' },
   emptyHint:     { tr: 'Farklı bir bölüm seçin veya tüm külliyâta dönün.', en: 'Pick a different section or return to the full collection.' },
 
-  // Today widget
-  today:         { tr: 'Bugünün tarifi', en: 'Today’s recipe' },
+  // Today widget — generic + context-aware eyebrows
+  today:           { tr: 'Bugünün tarifi',  en: 'Today’s recipe' },
+  today_ramazan:   { tr: 'Ramazan ayı',     en: 'Ramadan' },
+  today_bayram:    { tr: 'Bayram günü',     en: 'Festive day' },
+  today_season_bahar: { tr: 'Bahar tarifi', en: 'A spring pick' },
+  today_season_yaz:   { tr: 'Yaz tarifi',   en: 'A summer pick' },
+  today_season_guz:   { tr: 'Güz tarifi',   en: 'An autumn pick' },
+  today_season_kis:   { tr: 'Kış tarifi',   en: 'A winter pick' },
 
   // Navigation chrome
   nav_search:    { tr: 'Ara',          en: 'Search' },

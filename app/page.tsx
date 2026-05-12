@@ -5,6 +5,7 @@ import { localized } from '@/lib/title';
 import { CATEGORIES, type Category } from '@/data/taxonomies';
 import { getLang, t, categoryLabel as catLabel } from '@/lib/i18n';
 import { getStoryHook } from '@/lib/story-hooks';
+import { pickToday, currentSeasonShort } from '@/lib/today';
 import { SiteHeaderBar } from '@/components/site-header-bar';
 import { Masthead } from '@/components/masthead';
 import { SearchBar } from '@/components/search-bar';
@@ -100,24 +101,6 @@ function groupAlphabetically(
   return Array.from(groups.entries()).map(([letter, recipes]) => ({ letter, recipes }));
 }
 
-function currentSeason(): 'bahar' | 'yaz' | 'guz' | 'kis' {
-  const m = new Date().getMonth();
-  if (m <= 1 || m === 11) return 'kis';
-  if (m <= 4) return 'bahar';
-  if (m <= 7) return 'yaz';
-  return 'guz';
-}
-
-function pickToday(recipes: ReturnType<typeof getAllRecipes>): ReturnType<typeof getAllRecipes>[number] | null {
-  if (recipes.length === 0) return null;
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
-  const day = Math.floor((now.getTime() - start.getTime()) / 86_400_000);
-  const withImage = recipes.filter((r) => r.hero_image?.startsWith('/recipes/'));
-  const pool = withImage.length ? withImage : recipes;
-  return pool[day % pool.length] ?? null;
-}
-
 export default async function HomePage({
   searchParams,
 }: {
@@ -150,15 +133,15 @@ export default async function HomePage({
     all.map((r) => ({ slug: r.slug, title: localized(r.title, r.slug, lang) })),
   );
 
-  const today = pickToday(all);
-  const todayCard = today
+  const todayPick = pickToday(all);
+  const todayCard = todayPick
     ? {
-        slug: today.slug,
-        title: localized(today.title, today.slug, lang),
-        category: today.category as string,
-        categoryLabel: catLabel(today.category as string, lang),
-        hero_image: today.hero_image,
-        total_min: today.total_min,
+        slug: todayPick.recipe.slug,
+        title: localized(todayPick.recipe.title, todayPick.recipe.slug, lang),
+        category: todayPick.recipe.category as string,
+        categoryLabel: catLabel(todayPick.recipe.category as string, lang),
+        hero_image: todayPick.recipe.hero_image,
+        total_min: todayPick.recipe.total_min,
       }
     : null;
 
@@ -182,7 +165,7 @@ export default async function HomePage({
         hrefFor={buildHrefFor(lang)}
       />
 
-      <MagazineGrid recipes={cards} season={currentSeason()} lang={lang} />
+      <MagazineGrid recipes={cards} season={currentSeasonShort()} lang={lang} />
 
       {hasMore && (
         <div id="more" className="mx-auto -mt-8 mb-16 flex justify-center px-6">
@@ -205,7 +188,7 @@ export default async function HomePage({
       <FeedbackSection lang={lang} />
       <AlphabetIndex groups={indexGroups} lang={lang} />
 
-      {todayCard && <TodayWidget recipe={todayCard} lang={lang} />}
+      {todayCard && <TodayWidget recipe={todayCard} reason={todayPick?.reason} lang={lang} />}
     </main>
   );
 }
