@@ -9,7 +9,13 @@ import './globals.css';
 const VERDANA = 'Verdana, Geneva, "DejaVu Sans", Tahoma, sans-serif';
 
 export const metadata: Metadata = {
-  title: 'OttomanTaste — Seven centuries, one table',
+  // `template` lets recipe pages set their own title via `generateMetadata`
+  // while keeping the consistent " — OttomanTaste" suffix; the root tab
+  // (and everything that doesn't override) stays the bare brand.
+  title: {
+    default: 'OttomanTaste',
+    template: '%s — OttomanTaste',
+  },
   description:
     'OttomanTaste — saraydan halka uzanan mutfak külliyatı; 427 tarif, yedi yüzyıl.',
 };

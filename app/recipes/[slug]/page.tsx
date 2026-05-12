@@ -25,8 +25,9 @@ export async function generateMetadata({
   const r = getRecipeBySlug(slug);
   if (!r) return { title: 'Recipe not found' };
   const title = localized(r.title, slug, lang);
+  // Root layout's metadata.title.template appends " — OttomanTaste".
   return {
-    title: `${title} — OttomanTaste`,
+    title,
     description: localized(r.tagline, '', lang) || title,
   };
 }
