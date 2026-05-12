@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* ─── Global font sizing — bumped from the default 16px to make body text
+ *     visibly larger across the site. Everything sized in `rem` (Tailwind's
+ *     text-sm, text-base, text-lg, clamp(...) headings, padding utilities)
+ *     scales proportionally from this root. ───────────────────────────── */
+html {
+  font-size: 19px;
+}
+
+/* Verdana her yerde — Tailwind v4 theme variables binding so that
+ * `font-sans`, `font-serif` and `font-mono` utilities all resolve to the
+ * Verdana stack, including the monospace eyebrow labels and tabular-nums
+ * digits used in recipe stats. */
+@theme inline {
+  --font-sans:  Verdana, Geneva, "DejaVu Sans", Tahoma, sans-serif;
+  --font-serif: Verdana, Geneva, "DejaVu Sans", Tahoma, sans-serif;
+  --font-mono:  Verdana, Geneva, "DejaVu Sans", Tahoma, sans-serif;
+}
+
 /* ─── Impeccable-Ottoman palette: warm parchment + 10 category accents in OKLCH ─── */
 @theme inline {
   /* Base parchment + ink — lifted to a softer ivory cream per user direction */

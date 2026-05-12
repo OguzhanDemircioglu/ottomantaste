@@ -1,27 +1,12 @@
 import type { Metadata } from 'next';
-import { Cormorant_SC, Cormorant, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 
-const cormorantSc = Cormorant_SC({
-  variable: '--font-display',
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  display: 'swap',
-});
-
-const cormorant = Cormorant({
-  variable: '--font-italic',
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  style: ['italic', 'normal'],
-  display: 'swap',
-});
-
-const jakarta = Plus_Jakarta_Sans({
-  variable: '--font-sans',
-  subsets: ['latin'],
-  display: 'swap',
-});
+/**
+ * Verdana her yerde. Tüm yazı yüzeylerini Verdana stack'ine bağlıyoruz —
+ * gövde, başlıklar, italikler, monospace eyebrow'lar. Stack: Verdana →
+ * Geneva (macOS) → DejaVu Sans (Linux fallback) → sans-serif (final).
+ */
+const VERDANA = 'Verdana, Geneva, "DejaVu Sans", Tahoma, sans-serif';
 
 export const metadata: Metadata = {
   title: 'OttomanTaste — Seven centuries, one table',
@@ -33,10 +18,22 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="tr" className={`${cormorantSc.variable} ${cormorant.variable} ${jakarta.variable}`}>
+    <html
+      lang="tr"
+      style={
+        {
+          // CSS custom properties consumed by inline `style={{ fontFamily: 'var(--font-...)' }}`
+          // across the component tree. Bind all three to Verdana so every legacy
+          // call site updates without a rewrite.
+          ['--font-display' as string]: VERDANA,
+          ['--font-italic'  as string]: VERDANA,
+          ['--font-sans'    as string]: VERDANA,
+        } as React.CSSProperties
+      }
+    >
       <body
         style={{
-          fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, sans-serif',
+          fontFamily: VERDANA,
           backgroundColor: 'var(--color-background)',
           color: 'var(--color-foreground)',
         }}
