@@ -1,0 +1,21 @@
+# Cloudflare Workers Assets / Pages header rules.
+#
+# next.config.ts's async headers() only applies to Worker-rendered responses;
+# files served from /public via the ASSETS binding bypass it, so we override
+# their Cache-Control here. All these surfaces are content-stable across
+# deploys (hero photos belong to a fixed recipe slug, the search index is
+# regenerated on every build with a fresh URL via the Next.js bundle hash
+# strategy, the favicon is a brand asset) — `immutable` is safe.
+
+/recipes/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/search-index.json
+  Cache-Control: public, max-age=31536000, immutable
+
+/icon.png
+  Cache-Control: public, max-age=31536000, immutable
+
+# Public folder svg/png helpers — short cache, easy to swap.
+/*.svg
+  Cache-Control: public, max-age=86400

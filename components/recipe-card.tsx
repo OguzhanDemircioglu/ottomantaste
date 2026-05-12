@@ -120,6 +120,13 @@ export function RecipeCard({ recipe, variant = 'standard', index = 0, lang = 'tr
           alt={recipe.title}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          // First three cards are likely above the fold on most viewports —
+          // their hero image is the LCP candidate, so we preload it. Cards
+          // further down are explicitly lazy with a low fetch priority so
+          // the browser can spend bandwidth on what matters first.
+          {...(index < 3
+            ? { priority: true, fetchPriority: 'high' as const }
+            : { loading: 'lazy' as const, fetchPriority: 'low' as const })}
           className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
           style={{
             filter: 'sepia(0.16) saturate(0.95) contrast(1.04) brightness(0.97)',

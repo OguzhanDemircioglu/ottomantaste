@@ -37,7 +37,7 @@ function SlimArrow({ className }: { className?: string }) {
  * appear in a floating panel right below the input as soon as the query is
  * ≥2 chars long. Click-outside / Escape closes the panel.
  *
- * The recipe index is fetched lazily on first focus from /api/search-index
+ * The recipe index is fetched lazily on first focus from /search-index.json
  * and cached in module scope, so subsequent focuses are instant. Search runs
  * fully client-side (no DB) with Turkish-aware diacritic folding.
  *
@@ -64,7 +64,7 @@ let _indexPromise: Promise<Entry[]> | null = null;
 async function loadIndex(): Promise<Entry[]> {
   if (_indexCache) return _indexCache;
   if (_indexPromise) return _indexPromise;
-  _indexPromise = fetch('/api/search-index')
+  _indexPromise = fetch('/search-index.json')
     .then((r) => (r.ok ? r.json() : []))
     .then((data) => {
       _indexCache = (data as Entry[]) ?? [];

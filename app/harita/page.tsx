@@ -101,20 +101,16 @@ export default async function HaritaPage({
         </Link>
 
         <header className="mt-6 border-b-[3px] border-double border-[#2a1810] pb-6">
-          <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-[var(--color-magenta-deep)]">
-            {lang === 'en' ? 'Empire · Geographic catalogue' : 'İmparatorluk · Coğrafi külliyat'}
-          </p>
+          {/* Eski h1 ("Mutfak, haritalanmış.") kaldırıldı — eyebrow artık
+              ana başlık rolünü üstleniyor ve belirgin biçimde büyütüldü. */}
           <h1
-            className="mt-3 leading-[0.95] tracking-[-0.02em] text-[#2a1810]"
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(2.25rem, 6vw, 4.5rem)',
-            }}
+            className="font-mono uppercase tracking-[0.22em] leading-[1.05] text-[var(--color-magenta-deep)]"
+            style={{ fontSize: 'clamp(1.5rem, 3.6vw, 2.75rem)' }}
           >
-            {lang === 'en' ? 'A cuisine, mapped.' : 'Mutfak, haritalanmış.'}
+            {lang === 'en' ? 'Empire · Geographic catalogue' : 'İmparatorluk · Coğrafi külliyat'}
           </h1>
           <p
-            className="mt-3 text-base text-[#2a1810]/65 sm:text-lg"
+            className="mt-4 text-base text-[#2a1810]/65 sm:text-lg"
             style={{ fontFamily: 'var(--font-italic)', fontStyle: 'italic' }}
           >
             {lang === 'en'

@@ -8,7 +8,7 @@ import { t, type Lang } from '@/lib/i18n';
 
 /**
  * Lazy substring search across title (TR + EN), tagline, and ingredient names.
- * Index is fetched on first open from /api/search-index and cached in module
+ * Index is fetched on first open from /search-index.json and cached in module
  * scope; subsequent opens are instant. Search runs client-side; no DB.
  *
  * Performance:
@@ -34,7 +34,7 @@ let _indexPromise: Promise<Entry[]> | null = null;
 async function loadIndex(): Promise<Entry[]> {
   if (_indexCache) return _indexCache;
   if (_indexPromise) return _indexPromise;
-  _indexPromise = fetch('/api/search-index')
+  _indexPromise = fetch('/search-index.json')
     .then((r) => (r.ok ? r.json() : []))
     .then((data) => {
       _indexCache = (data as Entry[]) ?? [];

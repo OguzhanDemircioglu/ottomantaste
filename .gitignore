@@ -44,6 +44,8 @@ cloudflare-env.d.ts
 
 # generated at build time by scripts/build-recipes-json.mjs
 /data/recipes.generated.json
+# generated at build time by scripts/build-search-index.mjs
+/public/search-index.json
 
 # editor / harness
 .idea/
